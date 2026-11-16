@@ -1,0 +1,21 @@
+{{define "content"}}
+<div class="phase">MATERIAL · TASKS</div>
+<h1>素材任务（跨用户，最近 50）</h1>
+<table>
+  <tr><th>ID</th><th>USER</th><th>KIND</th><th>STATUS</th><th>PROMPT</th><th>ERROR</th><th>CREATED</th></tr>
+  {{range .Tasks}}
+  <tr>
+    <td class="mono">{{.ID}}</td>
+    <td class="mono">{{.UserID}}</td>
+    <td class="mono">{{.Kind}}</td>
+    <td>{{if eq .Status "succeeded"}}<span class="st ok">succeeded</span>{{else if eq .Status "failed"}}<span class="st bad">failed</span>{{else}}<span class="st dim">{{.Status}}</span>{{end}}</td>
+    <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.Prompt}}</td>
+    <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--red)">{{.Error}}</td>
+    <td class="mono">{{.CreatedAt.Format "01-02 15:04"}}</td>
+  </tr>
+  {{else}}
+  <tr><td colspan="7" style="color:var(--muted)">还没有任务</td></tr>
+  {{end}}
+</table>
+<p style="margin-top:16px"><a class="btn mini" href="/console/material">刷新</a></p>
+{{end}}

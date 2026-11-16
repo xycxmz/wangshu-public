@@ -1,0 +1,43 @@
+[package]
+license = "Apache-2.0"
+name = "wangshu"
+version = "0.22.0"
+description = "望舒桌面客户端"
+edition = "2021"
+
+[lib]
+# lib 名带 _lib 后缀：main.rs 经 wangshu_lib::run() 进入
+name = "wangshu_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# harness LLM 客户端：rustls 免系统 TLS 依赖，开源分发友好；stream 供资产下载
+# 流式限读（Response::chunk）
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+# harness 用 sync（oneshot 审批通道）；sidecar/engine 另需 process/io-util（子进程 +
+# 管道读写）；engine stop 的优雅退出等待需 time
+tokio = { version = "1", features = ["sync", "process", "io-util", "time"] }
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+tauri-plugin-updater = "2.14.1"
+tauri-plugin-process = "2.4.0"
+# 桌面常规件：托盘走 tauri tray-icon feature；快捷键/自启走官方插件（Rust 侧装配）
+tauri-plugin-global-shortcut = "2.4.1"
+tauri-plugin-autostart = "2.7.0"
+# R8-B 改名：清理旧 productName 注册的失效自启键（autostart 插件底层同库，版本随插件锁定）
+auto-launch = "0.6"
+# B4：任务终态托盘通知（系统通知；TS 侧 @tauri-apps/plugin-notification 同源）
+tauri-plugin-notification = "2"
+# 任务历史持久化：bundled 静态编译 sqlite3，免系统依赖（同 rustls 开源分发考虑）
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+# R10-B B2 定时任务：daily HH:MM 是本地墙钟语义，须本地时区换算（锁内已有
+# 传递依赖，直连不加编译面）
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }

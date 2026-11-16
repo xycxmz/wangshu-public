@@ -1,0 +1,36 @@
+{{define "content"}}
+<div class="phase">MCP · UPSTREAMS</div>
+<h1>MCP 治理</h1>
+{{if .Err}}<p class="errline">{{.Err}}</p>{{end}}
+<table>
+  <tr><th>NAME</th><th>BASE_URL</th><th>工具白名单</th><th>状态</th><th></th></tr>
+  {{range .Upstreams}}
+  <tr>
+    <td class="mono">{{.Name}}</td>
+    <td class="mono" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.BaseURL}}</td>
+    <td class="mono">{{.AllowedTools}}</td>
+    <td>{{if .IsEnabled}}<span class="st ok">enabled</span>{{else}}<span class="st dim">disabled</span>{{end}}</td>
+    <td>
+      <div class="acts">
+        <form method="post" action="/console/mcp/{{.Name}}/toggle"><button class="btn mini">{{if .IsEnabled}}停用{{else}}启用{{end}}</button></form>
+        <form method="post" action="/console/mcp/{{.Name}}/delete" onsubmit="return confirm('删除 {{.Name}}？')"><button class="btn mini danger">删除</button></form>
+      </div>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="5" style="color:var(--muted)">还没有 upstream · 下方注册</td></tr>
+  {{end}}
+</table>
+<div class="card">
+  <h2>注册 upstream</h2>
+  <form method="post" action="/console/mcp">
+    <div class="fgrid">
+      <label>NAME<input name="name" required placeholder="search"></label>
+      <label>BASE_URL<input name="base_url" required placeholder="https://mcp.example.com/sse"></label>
+      <label>AUTH_TOKEN（可空）<input name="auth_token" type="password" placeholder="Bearer 上游注入"></label>
+      <label>ALLOWED_TOOLS（JSON 数组，空=全放行）<input name="allowed_tools" placeholder='["search","fetch"]'></label>
+    </div>
+    <p style="margin-top:16px"><button class="btn pri">注册</button></p>
+  </form>
+</div>
+{{end}}

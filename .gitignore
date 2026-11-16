@@ -1,0 +1,17 @@
+# Secrets & local state
+.env
+*.local.*
+
+# Build artifacts
+server/bin/
+server/hub.db
+server/hub.db-*
+client/dist/
+client/node_modules/
+client/src-tauri/target/
+client/src-tauri/gen/
+*.exe
+
+# OS
+.DS_Store
+Thumbs.db

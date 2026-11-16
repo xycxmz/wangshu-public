@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>登录 · wangshu hub console</title>
+<style>
+:root{color-scheme:dark;--ground:#080C14;--panel-2:#121B29;--ink:#E6ECF4;--muted:#93A0B6;--rule:#22304A;
+--accent:#FF8A3D;--accent-deep:#FF6B1A;--red:#FF5D5D;--red-soft:#FF8A85;--r:2px;
+--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+::selection{background:rgba(255,138,61,.28)}
+body{font:14px/1.65 var(--sans);color:var(--ink);background:var(--ground);display:flex;
+align-items:center;justify-content:center;height:100vh;
+background-image:radial-gradient(700px 400px at 75% -10%,rgba(111,216,255,.08),transparent 60%),
+radial-gradient(circle 260px at 90% 8%,rgba(230,236,244,.10),transparent 70%)}
+.panel{width:380px;background:rgba(14,21,32,.66);border:1px solid rgba(255,255,255,.10);
+border-radius:var(--r);backdrop-filter:blur(18px);padding:24px}
+.phase{font:600 11px var(--mono);letter-spacing:.16em;color:var(--accent)}
+h1{font-size:20px;margin:8px 0 16px}
+label{display:flex;flex-direction:column;gap:6px;font:500 11px var(--mono);
+letter-spacing:.12em;color:var(--muted);margin-bottom:16px}
+input{font:14px var(--sans);color:var(--ink);background:var(--panel-2);
+border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px}
+input::placeholder{color:var(--muted);opacity:1}
+input:focus{outline:none;border-color:var(--accent)}
+button:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+.errline{font:12px var(--mono);color:var(--red-soft);border-left:2px solid var(--red);
+padding-left:10px;margin-bottom:16px}
+button{font:500 12.5px var(--mono);padding:10px 22px;border-radius:var(--r);cursor:pointer;
+border:1px solid var(--accent);background:var(--accent);color:#1A0D05}
+button:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="phase">HUB · CONSOLE ACCESS</div>
+  <h1>管理控制台登录</h1>
+  {{if .Err}}<p class="errline">{{.Err}}</p>{{else}}<div style="min-height:20px;margin-bottom:16px"></div>{{end}}
+  <form method="post" action="/console/login">
+    <label>EMAIL<input name="email" type="email" autofocus required></label>
+    <label>PASSWORD<input name="password" type="password" required></label>
+    <button type="submit">登录</button>
+  </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+# hub 自托管编排：PG16 + hub 单二进制（Go 静态镜像，无前端 embed）。
+# 首次使用：cp .env.example .env 并设置 HUB_PG_PASSWORD，然后
+#   docker compose up -d --build
+# hub 监听 127.0.0.1:10440：对外服务请自加反向代理（TLS 终结），
+# 不要直接改成 0.0.0.0 裸暴露。
+name: wangshu
+
+services:
+  pg:
+    image: postgres:16-alpine
+    container_name: wangshu-pg
+    environment:
+      POSTGRES_USER: hub
+      # 密码原样内插进 DSN：只选字母数字；含 @ : / ? # 等 URL 保留字符会破坏解析
+      POSTGRES_PASSWORD: ${HUB_PG_PASSWORD:?need HUB_PG_PASSWORD in .env}
+      POSTGRES_DB: hub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub -d hub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  hub:
+    build: .
+    image: wangshu-hub:latest
+    container_name: wangshu-hub
+    depends_on:
+      pg:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      HUB_ADDR: ":10440"
+      HUB_DSN: postgres://hub:${HUB_PG_PASSWORD}@pg:5432/hub?sslmode=disable
+      # 自更新分发目录（manifest.json + assets/）；未发版时空目录即可，hub 回 204
+      HUB_UPDATE_DIR: /data/updates
+    ports:
+      - "127.0.0.1:10440:10440"
+    volumes:
+      - updates:/data/updates
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  updates:

@@ -1,0 +1,24 @@
+{{define "content"}}
+<div class="phase">USAGE · ALL USERS</div>
+<h1>用量（跨用户，{{.Days}} 天）</h1>
+<nav style="margin-bottom:16px">
+  <a href="/console/usage?days=7" {{if eq .Days 7}}class="cur"{{end}}>7 天</a>
+  <a href="/console/usage?days=30" {{if eq .Days 30}}class="cur"{{end}}>30 天</a>
+  <a href="/console/usage?days=90" {{if eq .Days 90}}class="cur"{{end}}>90 天</a>
+</nav>
+<table>
+  <tr><th>DATE</th><th>USER</th><th>MODEL</th><th class="num">TOKENS IN/OUT</th><th class="num">费用（分）</th><th class="num">请求数</th></tr>
+  {{range .Usage}}
+  <tr>
+    <td class="mono">{{.Date}}</td>
+    <td class="mono">{{.UserID}}</td>
+    <td class="mono">{{.ModelName}}</td>
+    <td class="num">{{.TokensIn}} / {{.TokensOut}}</td>
+    <td class="num">{{.CostCents}}</td>
+    <td class="num">{{.Requests}}</td>
+  </tr>
+  {{else}}
+  <tr><td colspan="6" style="color:var(--muted)">窗口内无用量</td></tr>
+  {{end}}
+</table>
+{{end}}

@@ -1,0 +1,24 @@
+{{define "content"}}
+<div class="phase">PRICING · MATERIAL</div>
+<h1>素材计价（热生效）</h1>
+{{if .Err}}<p class="errline">{{.Err}}</p>{{end}}
+{{if .Saved}}<p class="okline">已保存 · 下一次生成即按新价计费</p>{{end}}
+<p style="color:var(--muted);font-size:12.5px;margin-bottom:16px">整表替换：两类一并提交（与 API PUT 同语义，部分提交会被拒）。</p>
+<form method="post" action="/console/pricing">
+  <div class="card">
+    <h2>IMAGE · 图（每张，分）</h2>
+    <div class="fgrid">
+      <label>MODEL<input name="image_model" required value="{{.ImageModel}}"></label>
+      <label>CENTS_PER_UNIT<input name="image_cents" type="number" min="0" value="{{.ImageCents}}"></label>
+    </div>
+  </div>
+  <div class="card">
+    <h2>VIDEO · 视频（每条，分）</h2>
+    <div class="fgrid">
+      <label>MODEL<input name="video_model" required value="{{.VideoModel}}"></label>
+      <label>CENTS_PER_UNIT<input name="video_cents" type="number" min="0" value="{{.VideoCents}}"></label>
+    </div>
+  </div>
+  <button class="btn pri">保存价目</button>
+</form>
+{{end}}

@@ -1,0 +1,28 @@
+{
+  "name": "wangshu-client",
+  "description": "wangshu desktop shell (Tauri 2 + Vite + TypeScript, no framework)",
+  "private": true,
+  "version": "0.22.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.4.0",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
+    "@tauri-apps/plugin-notification": "^2.8.0",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
+    "highlight.js": "^11.12.0",
+    "marked": "^18.2.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.4.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.0"
+  },
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="phase">MODELS · HOSTED POOL</div>
+<h1>托管模型池</h1>
+{{if .Err}}<p class="errline">{{.Err}}</p>{{end}}
+<table>
+  <tr><th>NAME</th><th>PROVIDER</th><th>UPSTREAM</th><th>PROTOCOL</th><th class="num">价格 IN/OUT（分/千token）</th><th>状态</th><th></th></tr>
+  {{range .Models}}
+  <tr>
+    <td class="mono">{{.Name}}</td>
+    <td>{{.Provider}}</td>
+    <td class="mono">{{.UpstreamModel}}</td>
+    <td class="mono">{{.Protocol}}</td>
+    <td class="num">{{.PriceInPer1K}} / {{.PriceOutPer1K}}</td>
+    <td>{{if .Enabled}}<span class="st ok">enabled</span>{{else}}<span class="st dim">disabled</span>{{end}}</td>
+    <td>
+      <div class="acts">
+        <form method="post" action="/console/models/{{.Name}}/toggle"><button class="btn mini">{{if .Enabled}}停用{{else}}启用{{end}}</button></form>
+        <form method="post" action="/console/models/{{.Name}}/delete" onsubmit="return confirm('删除 {{.Name}}？')"><button class="btn mini danger">删除</button></form>
+      </div>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="7" style="color:var(--muted)">还没有托管模型 · 下方新增</td></tr>
+  {{end}}
+</table>
+<div class="card">
+  <h2>新增托管模型</h2>
+  <form method="post" action="/console/models">
+    <div class="fgrid">
+      <label>NAME<input name="name" required placeholder="glm-4.7"></label>
+      <label>PROVIDER<input name="provider" required placeholder="zhipu"></label>
+      <label>BASE_URL<input name="base_url" required placeholder="https://open.bigmodel.cn/api/paas/v4"></label>
+      <label>API_KEY<input name="api_key" type="password" required placeholder="仅存 hub"></label>
+      <label>UPSTREAM_MODEL<input name="upstream_model" placeholder="glm-4.7"></label>
+      <label>PROTOCOL<select name="protocol"><option value="openai">openai</option><option value="anthropic">anthropic</option></select></label>
+      <label>PRICE_IN（分/千）<input name="price_in" type="number" min="0" value="0"></label>
+      <label>PRICE_OUT（分/千）<input name="price_out" type="number" min="0" value="0"></label>
+    </div>
+    <p style="margin-top:16px"><button class="btn pri">新增模型</button></p>
+  </form>
+</div>
+{{end}}

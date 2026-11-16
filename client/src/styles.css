@@ -1,0 +1,768 @@
+/* 望舒 · Flight Console（暗色任务控制中心）
+   2026-11-13 视觉升级拍板：A 暗色控制台基座 × B 圆角/气泡/玻璃
+   （视觉真源 prototype/upgrade-dark-fusion.html）。token 名沿用旧版零迁移，
+   值域整体换暗；新增 panel-2/telemetry/glass/圆角档/blur/--mono（旧版
+   var(--mono,monospace) 从未定义，本次补齐）。 */
+:root{
+  --ground:#080C14; --paper:#0E1520; --panel-2:#121B29; --ink:#E6ECF4; --muted:#93A0B6;
+  --rule:#22304A; --rule-soft:#1A2540; --accent:#FF8A3D; --accent-deep:#FF6B1A;
+  --ok:#53F2A5; --red:#FF5D5D; --telemetry:#6FD8FF; --hold-bg:rgba(255,138,61,.08);
+  --text-soft:#C7D0DE; --text-body:#E6ECF4; --code-bg:#161F2E; --code-ink:#C7D0DE;
+  --selection-wash:rgba(255,138,61,.30); --scrollbar-hover:#3A4A66; --hold-rule:#3D2E1E;
+  --glass:rgba(14,21,32,.66); --glass-border:rgba(255,255,255,.10);
+  --r:8px; --r-lg:10px; --pill:999px; --blur:18px;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+/* 浅色主题（2026-11-13 拍板：Flight Console 浅色版——同人格 token 翻转，
+   跟随系统+设置可覆盖）。data-theme="light" 整层覆盖，未设=暗色默认。 */
+:root[data-theme="light"]{
+  --ground:#F1F3F1; --paper:#FBFCFA; --panel-2:#F3F5F2; --ink:#1A1C1F; --muted:#63655E;
+  --rule:#C9CBC4; --rule-soft:#DEE0D9; --accent:#C75B12; --accent-deep:#A04608;
+  --ok:#2E7D43; --red:#B3261E; --telemetry:#0E6E8C; --hold-bg:#F8EDE2;
+  --text-soft:#3A3C36; --text-body:#26282A; --code-bg:#EFEFEB; --code-ink:#33352F;
+  --selection-wash:#F3D9C4; --scrollbar-hover:#AEB0A8; --hold-rule:#E3DDD2;
+  --glass:rgba(251,252,250,.72); --glass-border:rgba(20,22,24,.10);
+  color-scheme:light;
+}
+/* 浅色下的氛围层：星云/网格淡化为纸面浅纹理（保持低调） */
+:root[data-theme="light"] body::before{
+  background:
+    radial-gradient(circle 300px at 93% 4%, rgba(26,28,31,.05), transparent 70%),
+    radial-gradient(900px 500px at 78% -8%, rgba(14,110,140,.05), transparent 60%),
+    radial-gradient(700px 400px at -10% 110%, rgba(199,91,18,.04), transparent 55%);
+}
+:root[data-theme="light"] body::after{
+  background:
+    linear-gradient(rgba(14,110,140,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14,110,140,.05) 1px, transparent 1px);
+}
+/* 气泡橙渐变在浅底上字色加深一档保证对比 */
+:root[data-theme="light"] .bubble.me .b{color:#231103}
+
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{
+  font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--ground);color:var(--ink);
+  font-size:14px;line-height:1.5;
+}
+/* 星域氛围层（融合稿 .sky）：绚烂来自氛围不来自控件装饰。
+   ::before = 星云径向渐变 + 望舒淡月（右上），::after = HUD 网格线（56px，径向渐隐 mask）。
+   fixed + z-index:0；#app 抬到 z-index:1，内容全部在氛围之上。 */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(circle 300px at 93% 4%, rgba(230,236,244,.10), rgba(230,236,244,.03) 60%, transparent 75%),
+    radial-gradient(1100px 600px at 78% -8%, rgba(111,216,255,.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(255,138,61,.07), transparent 55%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    linear-gradient(rgba(111,216,255,.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111,216,255,.030) 1px, transparent 1px);
+  background-size:56px 56px;
+  -webkit-mask-image:radial-gradient(1200px 700px at 60% 30%, #000 0%, transparent 80%);
+  mask-image:radial-gradient(1200px 700px at 60% 30%, #000 0%, transparent 80%);
+}
+#app{display:flex;flex-direction:column;height:100vh;min-width:1180px;position:relative;z-index:1}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+/* 全局占位符：UA 默认半透明灰在暗底 CR≈3.9 不达标（视觉终审实锤），统一落 --muted */
+input::placeholder,textarea::placeholder{color:var(--muted)}
+::selection{background:var(--selection-wash);color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--rule);border:2px solid var(--ground)}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-hover)}
+
+/* ── 顶栏（玻璃面） ───────────────────── */
+header{
+  height:56px;flex:none;border-bottom:1px solid var(--rule);position:relative;z-index:30;
+  display:flex;align-items:center;padding:0 24px;gap:24px;
+  background:var(--glass);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));
+}
+.brand{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;letter-spacing:.04em}
+.domains{display:flex;margin-left:16px;border:1px solid var(--ink);border-radius:var(--r);overflow:hidden}
+.domains button{
+  padding:7px 22px;font-size:13px;font-weight:500;font-family:inherit;
+  background:var(--ground);color:var(--ink);border:none;cursor:pointer;
+}
+.domains button + button{border-left:1px solid var(--ink)}
+.domains button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+.domains button:not([aria-pressed="true"]):hover{background:var(--paper)}
+.spacer{flex:1}
+.route{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+.route b{color:var(--telemetry);font-weight:500}
+.user{font-size:13px;font-weight:500;border:1px solid var(--rule);border-radius:var(--pill);padding:6px 14px}
+/* 任务中心徽标（R6-A#3）：RUN/HOLD mono 读数，磷光绿/信号橙分段 */
+.taskbadge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);border:1px solid var(--rule);border-radius:var(--pill);padding:6px 14px;background:var(--glass);cursor:pointer;flex:none}
+.taskbadge:hover{border-color:var(--ink)}
+.taskbadge b{font-weight:600;margin-left:2px}
+.taskbadge b.run{color:var(--ok)}
+.taskbadge b.hd{color:var(--accent)}
+/* 任务历史面板：徽标下弹出，玻璃面 + 搜索行 + 状态行列表 */
+.thist{position:absolute;top:52px;left:190px;width:380px;max-height:440px;display:flex;flex-direction:column;border:1px solid var(--glass-border);border-radius:var(--r-lg);background:var(--glass);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));box-shadow:0 12px 40px rgba(8,12,20,.55);z-index:40;overflow:hidden}
+.thist[hidden]{display:none}
+.thist #thist-q{margin:10px;border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:8px 12px;font-size:13px;font-family:inherit;color:var(--ink);caret-color:var(--accent)}
+.thist #thist-q:focus{outline:none;border-color:var(--ink)}
+.thist .tlist{overflow-y:auto;padding:0 10px 10px}
+.thist .trow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);cursor:pointer}
+.thist .trow:hover{background:rgba(111,216,255,.06)}
+.thist .trow .st{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;flex:none;width:44px}
+.thist .trow .ttl{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thist .trow .tm{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);flex:none}
+
+/* ── 主体 ─────────────────────────────── */
+main{flex:1;display:grid;grid-template-columns:216px 1fr 300px;min-height:0}
+main[data-view="chat"]{grid-template-columns:240px 1fr}
+main[data-view="chat"] aside{display:none}
+main[data-view="chat"] .task{display:none}
+main[data-view="chat"] .settings{display:none}
+main[data-view="task"] .chatcol{display:none}
+main[data-view="task"] .settings{display:none}
+main[data-view="settings"]{grid-template-columns:240px 1fr}
+main[data-view="settings"] aside{display:none}
+main[data-view="settings"] .task{display:none}
+main[data-view="settings"] .chatcol{display:none}
+/* ── 资产视图（rail 03，B5） ─────────────── */
+.assets{display:none}
+main[data-view="assets"]{grid-template-columns:240px 1fr}
+main[data-view="assets"] .task{display:none}
+main[data-view="assets"] .chatcol{display:none}
+main[data-view="assets"] .settings{display:none}
+main[data-view="assets"] aside{display:none}
+main[data-view="assets"] .assets{display:flex;flex-direction:column;min-height:0;overflow:auto}
+main[data-view="chat"] .assets{display:none}
+main[data-view="task"] .assets{display:none}
+main[data-view="settings"] .assets{display:none}
+.asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:16px 20px}
+/* 资产空态（R6-C#1）：整行占位 + 行动指引 CTA */
+.assets-empty{grid-column:1/-1;padding:96px 24px;text-align:center}
+.assets-empty .phase{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.16em;color:var(--accent-deep)}
+.assets-empty h2{font-size:22px;font-weight:600;margin:10px 0 6px}
+.assets-empty p{font-size:13px;color:var(--muted);margin-bottom:22px}
+.asset-card{border:1px solid var(--rule-soft);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}
+.asset-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--panel-2);border:1px solid var(--rule-soft);border-radius:calc(var(--r) - 3px)}
+.asset-thumb.vid{display:flex;align-items:center;justify-content:center;font-family:var(--mono,monospace);font-size:12px;color:var(--ink);letter-spacing:.2em}
+.asset-card .ttl{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asset-card .cnt{font-size:12px;color:var(--accent-deep);font-family:var(--mono,monospace)}
+.asset-card .acts{display:flex;gap:8px}
+.asset-card .acts .btn{font-size:12px;padding:4px 10px}
+.mat-save{margin-top:10px}
+.mat-save .btn{font-size:12px;padding:4px 12px}
+.mat-save .btn:disabled{opacity:.4;cursor:default}
+.mat-retry{margin-top:10px}
+.mat-retry .btn{font-size:12px;padding:4px 12px}
+
+/* ── 左 rail：编号分区，工作域组 + 平台组 ── */
+.rail{border-right:1px solid var(--rule);padding:20px 0;display:flex;flex-direction:column}
+/* 选中刻度：所有分区常驻 2px 透明左缘，当前项按 main[data-view] 落橙——
+   刻度线画在 rail 自身左缘（x=0..2 可见），文字统一 x=20，不再用负 margin 外扩 */
+.rail .sec{padding:8px 20px 8px 18px;margin-bottom:20px;border-left:2px solid transparent;border-radius:0 var(--r) var(--r) 0}
+.rail .sec.platform{margin-bottom:10px}
+.rail .divider{border-top:1px solid var(--rule-soft);margin:14px 20px 22px}
+.rail .no{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em}
+.rail .nm{font-size:14px;font-weight:500;margin-top:3px;color:var(--text-soft)}
+main[data-view="chat"] .rail .sec[data-sec="chat"],
+main[data-view="task"] .rail .sec[data-sec="task"]{border-left-color:var(--accent);
+  background:linear-gradient(90deg, rgba(255,138,61,.10), transparent 65%)}
+main[data-view="chat"] .rail .sec[data-sec="chat"] .nm,
+main[data-view="task"] .rail .sec[data-sec="task"] .nm{font-weight:600;color:var(--ink)}
+main[data-view="assets"] .rail .sec[data-sec="assets"],
+main[data-view="settings"] .rail .sec[data-sec="settings"]{border-left-color:var(--accent);
+  background:linear-gradient(90deg, rgba(255,138,61,.10), transparent 65%)}
+main[data-view="assets"] .rail .sec[data-sec="assets"] .nm,
+main[data-view="settings"] .rail .sec[data-sec="settings"] .nm{font-weight:600;color:var(--ink)}
+.rail button{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%}
+/* all:unset 连 outline 一并清掉，且特异性(0,1,1)压过全局 :focus-visible(0,1,0)，
+   键盘焦点环在此补回（值同全局规则，DESIGN.md Buttons/Focus 规格） */
+.rail button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rail button.sec:hover{background:rgba(111,216,255,.06)}
+.rail .foot{margin-top:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.06em;padding:0 20px}
+
+/* ── 任务域 ──────────────────────────── */
+.task{padding:28px 32px;overflow-y:auto;border-right:1px solid var(--rule);min-width:0}
+.kicker-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.phase{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--accent-deep);letter-spacing:.08em}
+h1{font-size:22px;font-weight:600}
+h1 .live{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--ok);letter-spacing:.1em;margin-left:10px}
+.telem{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:20px 0 24px}
+.t{padding:14px 18px;border:1px solid var(--rule-soft);border-radius:var(--r-lg);background:var(--panel-2);min-width:0}
+.t:last-child{border-right:none}
+.t .l{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.t .v{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums;color:var(--ok);text-shadow:0 0 14px rgba(83,242,165,.35)}
+.t .v small{font-size:11px;font-weight:400;color:var(--muted)}
+/* AGENT 格：非量值的长串标识，降字号对齐基线（原型为内联 style，此处收敛为类） */
+.t .v.compact{font-size:15px;padding-top:5px}
+.t .v.readout::after{content:"";display:inline-block;width:7px;height:15px;background:var(--accent);margin-left:4px;vertical-align:-2px;animation:tick 1.2s steps(2) infinite}
+@keyframes tick{50%{opacity:0}}
+.log{font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.5}
+.log .row{display:flex;gap:18px;padding:7px 0;border-bottom:1px dotted var(--rule-soft)}
+.log .tstamp{color:var(--muted);width:76px;flex:none}
+.log .evt{color:var(--ink);min-width:0}
+.log .evt b{font-weight:600}
+.log .ok{color:var(--ok)}
+.log .holdline{color:var(--accent-deep)}
+.log .fail{color:var(--red)}
+.log .off{color:var(--muted)}
+.log .dur{color:var(--muted);margin-left:auto;flex:none;opacity:.85}
+
+/* HOLD 审批块：信号橙辉光焦点 */
+.hold{margin-top:18px;border:1px solid var(--accent);border-radius:var(--r-lg);
+  box-shadow:0 0 24px rgba(255,138,61,.15), inset 0 0 40px rgba(255,138,61,.04)}
+.hold .bar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--hold-bg);flex-wrap:wrap;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.hold .tag{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;color:var(--accent);letter-spacing:.1em}
+.hold .desc{font-size:13px}
+.hold .diff{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7;padding:12px 16px;background:var(--panel-2);border-top:1px solid var(--accent);overflow-x:auto;white-space:pre-wrap}
+.hold .add{color:var(--ok)}
+/* del 提亮：暗底上纯红删除线只有 ~2:1 对比度（视觉评审教训），字用亮珊瑚、线保留危险红 */
+.hold .del{color:#FFB0A6;text-decoration:line-through;text-decoration-color:var(--red)}
+.hold .acts{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--hold-rule)}
+.btn{font-size:13px;font-weight:500;padding:8px 20px;font-family:inherit;cursor:pointer;border-radius:var(--pill);transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.btn.pri{background:linear-gradient(90deg,var(--accent),var(--accent-deep));color:#1A0D05;border:1px solid transparent;box-shadow:0 4px 16px rgba(255,138,61,.35)}
+.btn.pri:hover{box-shadow:0 6px 22px rgba(255,138,61,.5)}
+.btn.sec{background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--ink)}
+.btn.sec:hover{background:rgba(255,255,255,.10)}
+/* 全局 disabled 兜底（登录钮等无 scope 规则处）；hover 色不因禁用翻色，各 scope 的重复规则收敛留 P1 */
+.btn:disabled{opacity:.55;cursor:default}
+.btn.pri:disabled:hover{box-shadow:none}
+.btn.sec:disabled:hover{background:rgba(255,255,255,.05)}
+
+/* ── 对话域：会话索引左列 + 消息主区 ── */
+.chatcol{display:flex;flex-direction:row;min-width:0}
+.chats{width:264px;flex:none;border-right:1px solid var(--rule);overflow-y:auto;padding:18px 0}
+.chatmain{flex:1;display:flex;flex-direction:column;min-width:0}
+.chats h2{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted);padding:0 20px 10px}
+.chats .crow{display:flex;gap:10px;padding:9px 104px 9px 20px;cursor:pointer;position:relative;border-radius:0 var(--r) var(--r) 0}
+.chats .crow:hover .nm{color:var(--ink)}
+.chats .crow:hover{background:rgba(111,216,255,.06)}
+.chats .no{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:22px;flex:none;padding-top:2px}
+.chats .nm{font-size:13px;font-weight:500;color:var(--text-soft);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chats .crow.cur{background:var(--paper);box-shadow:inset 2px 0 0 var(--accent)}
+.chats .crow.cur .nm{font-weight:600;color:var(--ink)}
+/* 行尾更新时刻（P2-14）：绝对定位落在 104px 操作预留槽内，hover 操作钮覆于其上；
+   mono 量侧小字，pointer-events 关闭免吞行点击 */
+.chats .tm{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);pointer-events:none}
+/* 行尾操作钮：右侧绝对定位（常驻 padding 预留槽，hover 只切 visibility 不改布局）；
+   武装中的删除钮常显（确认窗口不因指针移出而消失），红色=拒绝/销毁路径语义 */
+.chats .rowops{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;gap:4px;visibility:hidden}
+.chats .crow:hover .rowops,.chats .crow:focus-within .rowops,.chats .rop.armed{visibility:visible}
+.chats .rop{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;border:1px solid var(--ink);background:var(--paper);color:var(--ink);padding:2px 7px;cursor:pointer}
+.chats .rop:hover{background:var(--ink);color:var(--ground)}
+.chats .rop.del.armed{background:var(--red);border-color:var(--red);color:var(--ground)}
+/* 行内改名输入：占 .nm 位，墨边框焦点态（launch 输入同款） */
+.chats .rn{flex:1;min-width:0;border:1px solid var(--ink);background:var(--paper);color:var(--ink);caret-color:var(--accent);font-family:inherit;font-size:13px;padding:2px 6px}
+.chats .rn:focus{outline:none;border-color:var(--ink)}
+/* 会话空态 */
+.chats .empty{padding:2px 20px}
+.chats .empty p{font-size:13px;color:var(--muted)}
+.chats .empty .btn{margin-top:18px}
+.stream{flex:1;overflow-y:auto;padding:26px 28px 0;min-width:0}
+/* 气泡对话（2026-11-13 拍板：融合稿回归气泡，旧「记录体」拍板废止）。
+   me = 信号橙渐变深字右对齐，ai = 暗玻璃细描边左对齐；who 标签保留 mono 角标。 */
+.bubble{margin-bottom:20px;max-width:68%;min-width:0}
+.bubble.me{margin-left:auto}
+.bubble .who{display:flex;align-items:baseline;gap:10px;margin-bottom:5px;font-size:12.5px;font-weight:600}
+.bubble.ai .who{color:var(--telemetry)}
+.bubble.me .who{justify-content:flex-end;color:var(--accent)}
+.bubble .who .role{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.bubble .b{font-size:14px;line-height:1.7;padding:13px 18px;border-radius:var(--r-lg)}
+.bubble.ai .b{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border-bottom-left-radius:4px;color:var(--text-body)}
+.bubble.me .b{background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:#1A0D05;border-bottom-right-radius:4px;box-shadow:0 6px 22px rgba(255,138,61,.30)}
+.bubble .b code{font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:1px 6px;border-radius:4px}
+.bubble.ai .b code{background:rgba(111,216,255,.10)}
+.bubble.me .b code{background:rgba(26,13,5,.18)}
+.toolblk{border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);margin-top:8px;max-width:640px}
+.toolblk .cmd{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7;padding:10px 14px;color:var(--code-ink);white-space:pre;overflow-x:auto}
+.toolblk .cmd .st{color:var(--accent);font-weight:600}
+.toolblk .cmd .ok{color:var(--ok)}
+/* 正文代码段（fenced 块，R9-A A2）：Two Registers 的量侧，落 Mono/code-bg；
+   容器=标题栏（语言标签+复制钮）+ 高亮 pre */
+.bubble .codeblk{font-family:var(--mono);margin-top:8px;max-width:640px;background:var(--code-bg);border:1px solid var(--rule-soft);border-radius:var(--r);overflow:hidden}
+.bubble .codeblk .cb-bar{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;border-bottom:1px solid var(--rule-soft)}
+.bubble .codeblk .cb-lang{font-size:10.5px;letter-spacing:.08em;color:var(--muted)}
+.bubble .codeblk .cb-copy{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:transparent;border:1px solid var(--rule);border-radius:var(--pill);padding:1px 9px;cursor:pointer}
+.bubble .codeblk .cb-copy:hover{color:var(--ink);border-color:var(--ink)}
+.bubble .codeblk .cb-pre{margin:0;padding:10px 14px;font-size:12.5px;line-height:1.6;color:var(--code-ink);white-space:pre;overflow-x:auto}
+/* 块内 code 是容器不是行内码：免掉 .b code 的行内底色/内距 */
+.bubble .codeblk .cb-pre code{background:transparent;padding:0;font-size:inherit}
+/* marked 正文元素（克制：标题收敛不越级、表格 1px 规则线内滚） */
+.bubble .b p{margin:0 0 8px}
+.bubble .b>p:last-child,.bubble .b :last-child{margin-bottom:0}
+.bubble .b h1,.bubble .b h2,.bubble .b h3,.bubble .b h4,.bubble .b h5,.bubble .b h6{font-size:14px;font-weight:600;margin:12px 0 6px;line-height:1.4}
+.bubble .b h1{font-size:16px}
+.bubble .b ul,.bubble .b ol{margin:0 0 8px;padding-left:20px}
+.bubble .b li{margin:2px 0}
+.bubble .b blockquote{margin:8px 0;padding:2px 12px;border-left:2px solid var(--rule);color:var(--muted)}
+.bubble .b a{color:var(--telemetry);text-underline-offset:3px}
+.bubble .b table{border-collapse:collapse;margin:8px 0;font-size:13px;max-width:100%;display:block;overflow-x:auto}
+.bubble .b th,.bubble .b td{border:1px solid var(--rule-soft);padding:4px 10px;text-align:left}
+.bubble .b th{font-weight:600;color:var(--text-soft)}
+.bubble .b hr{border:none;border-top:1px solid var(--rule-soft);margin:10px 0}
+/* 流式生成中的 assistant 正文：readout 同款光标（在走的量） */
+.bubble .b.streaming::after{content:"";display:inline-block;width:7px;height:15px;background:var(--accent);margin-left:3px;vertical-align:-2px;animation:tick 1.2s steps(2) infinite}
+/* 消息 hover 操作（复制/重发）：ghost 胶囊，仅 hover 可见 */
+.mops{display:flex;gap:6px;margin-top:6px;opacity:0;transition:opacity .15s ease}
+.bubble:hover .mops{opacity:1}
+.bubble.me .mops{justify-content:flex-end}
+.mop{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);background:transparent;border:1px solid var(--rule);border-radius:var(--pill);padding:3px 12px;cursor:pointer;transition:color .15s ease,border-color .15s ease}
+.mop:hover{color:var(--ink);border-color:var(--ink)}
+/* 加载更早（R5-B#2）：顶置居中小钮 */
+.load-earlier{text-align:center;padding:6px 0 18px}
+/* 任务卡消息（R6-B U3）：meta 消息专用全宽卡，跨 me/ai 居中独立于气泡 */
+.taskcard{max-width:68%;margin:4px auto 20px;border:1px solid var(--rule-soft);border-radius:var(--r-lg);background:var(--panel-2);padding:14px 16px;display:flex;flex-direction:column;gap:8px;position:relative}
+.taskcard.live{border-color:var(--rule)}
+.taskcard .st{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.12em}
+.taskcard .tc-goal{font-size:14px;font-weight:500;color:var(--text-body)}
+.taskcard .tc-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+.taskcard .tc-meta.readout{color:var(--ok);text-shadow:0 0 12px rgba(83,242,165,.3)}
+.taskcard .tc-meta.readout::after{content:"▮";font-size:9px;color:var(--accent);margin-left:5px;animation:tick 1.2s steps(2) infinite}
+.taskcard .tc-done{font-size:12.5px;color:var(--ok);border-top:1px dotted var(--rule-soft);padding-top:8px}
+.taskcard .tc-fail{font-size:12.5px;color:var(--red);border-top:1px dotted var(--rule-soft);padding-top:8px}
+.taskcard.off{opacity:.8}
+.taskcard .hold{margin-top:4px}
+/* 错误行（请求失败/契约不符）：mono 承量侧 */
+.errline{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5;color:var(--red);padding-top:8px;word-break:break-all}
+/* 输入区：胶囊玻璃条（融合稿形态） */
+.composer{padding:14px 24px;margin:0 16px 22px;display:flex;gap:12px;align-items:center;
+  border:1px solid var(--glass-border);border-radius:var(--pill);
+  background:rgba(14,21,32,.92); /* 底色比 --glass(.66) 提一档：HUD 网格穿透输入条，边界须清晰（玻璃三面规则内的档位微调） */
+  backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));box-shadow:0 8px 32px rgba(8,12,20,.45)}
+:root[data-theme="light"] .composer{background:rgba(251,252,250,.92)}
+/* Model chip is chrome, not a signal: neutral per the Signal Discipline
+   rule (orange marks only "needs human action / task in motion").
+   路由读数的青色声部由顶栏 ROUTE 行承担，chip 与同排 并答/附图 同用 --muted。 */
+.composer .chip{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);border:1px solid var(--rule);border-radius:var(--pill);padding:6px 14px;flex:none;background:transparent;cursor:pointer;white-space:nowrap}
+.composer .chip:hover{color:var(--ink);border-color:var(--ink)}
+/* 空态下探至约 30vh（P2-15）：48px 顶距曾易误读为顶部系统消息，重心落偏下贴近输入区 */
+.stream-empty{margin:30vh 0 0;text-align:center;color:var(--muted);font-size:13px}
+.composer input,.composer textarea{flex:1;border:none;background:transparent;padding:11px 4px;font-size:14px;font-family:inherit;color:var(--ink);caret-color:var(--accent)}
+.composer input::placeholder,.composer textarea::placeholder{color:var(--muted)}
+.composer input:focus,.composer textarea:focus{outline:none}
+/* textarea 形态（R9-D1 F-001）：单行起步自增高，上限内滚；容器贴底对齐 */
+.composer textarea{resize:none;min-height:41px;max-height:160px;overflow-y:auto;line-height:1.5}
+.composer{align-items:flex-end}
+/* 单行态基线：chip 高约 25px，底距 9px 使中线对齐 textarea 首行文字中线（11+10.5≈21.5px）；
+   发送钮高 40px≈textarea 43px 贴底即齐，不加 */
+.composer .ptoggle,.composer .chip,.composer .attach{margin-bottom:9px}
+/* @ 补全面板（R6-B）：输入条上方玻璃面板，首项高亮（Enter 选择） */
+.composer{position:relative}
+.atpanel{position:absolute;bottom:calc(100% + 10px);left:0;min-width:340px;max-width:480px;
+  border:1px solid var(--glass-border);border-radius:var(--r-lg);background:var(--glass);
+  backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));
+  box-shadow:0 12px 40px rgba(8,12,20,.55);padding:6px;z-index:30}
+.atpanel[hidden]{display:none}
+.atitem{display:flex;align-items:baseline;gap:12px;padding:9px 12px;border-radius:var(--r);cursor:pointer}
+.atitem b{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--telemetry);flex:none}
+.atitem span{font-size:12.5px;color:var(--muted)}
+.atitem:hover,.atitem.cur{background:rgba(111,216,255,.08)}
+.atitem.cur b{color:var(--accent)}
+.send{background:linear-gradient(90deg,var(--accent),var(--accent-deep));color:#1A0D05;border:none;border-radius:var(--pill);padding:11px 24px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px rgba(255,138,61,.35);transition:box-shadow .15s ease}
+.send:hover{box-shadow:0 6px 22px rgba(255,138,61,.5)}
+.send:disabled{opacity:.55;cursor:default}
+.send:disabled:hover{box-shadow:none}
+/* 快捷键小注（Shift+Enter 提示从 placeholder 挪出）：落在 composer 下缘留白内，
+   绝对定位零布局位移；mono 量侧小字，与 .usage-line 同档 */
+.composer .ckey{position:absolute;top:calc(100% + 5px);right:4px;font-family:var(--mono);font-size:10.5px;color:var(--muted);pointer-events:none}
+
+/* ── 登录视图（无 token 时的主区；玻璃面板） ── */
+.login{flex:1;display:flex;align-items:center;justify-content:center}
+.login .panel{width:380px;border:1px solid var(--glass-border);border-radius:var(--r-lg);background:var(--glass);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));box-shadow:0 12px 40px rgba(8,12,20,.5);padding:28px 32px;display:flex;flex-direction:column;align-items:flex-start}
+.login h1{margin-top:6px}
+.login label{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);margin:16px 0 6px}
+.login input{width:100%;border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:11px 14px;font-size:14px;font-family:inherit;color:var(--ink);caret-color:var(--accent)}
+.login input:focus{outline:none;border-color:var(--ink)}
+.login .btn{margin-top:20px}
+.login .hub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.06em}
+/* HUB 行整体与表单拉开间距（margin 落行容器，不参与行内 flex 居中）；
+   「修改」钮降小钮并去掉 .login .btn 的 20px 顶距，行内与文字对齐 */
+.login .hubline{margin-top:18px}
+.login .btn.sec{margin-top:0;padding:4px 12px;font-size:12px}
+
+/* ── 右列：任务列（整格） ─────────────── */
+aside{padding:28px 24px;overflow-y:auto}
+aside h2{font-size:13px;font-weight:600;letter-spacing:.02em;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cell{border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--paper);padding:12px 12px 10px;min-height:88px;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.cell:hover{border-color:var(--rule);transform:translateY(-1px);box-shadow:0 6px 18px rgba(8,12,20,.5)}
+.cell.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px rgba(255,138,61,.45)}
+.cell .st{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em}
+.cell .ttl{font-size:12.5px;font-weight:500;margin-top:8px;line-height:1.35;color:var(--text-body)}
+.run{color:var(--ok)}.hd{color:var(--accent)}.dn{color:var(--muted)}
+.cell .cnt{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:6px}
+/* 系统遥测（hubProbe.ts）：healthz RTT 心跳条，20 样本双色 */
+.sysprobe{margin-top:14px;border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);padding:12px 14px}
+.sysprobe h4{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.18em;color:var(--muted);margin-bottom:10px}
+.sysprobe .bars{display:flex;align-items:flex-end;gap:3px;height:38px}
+.sysprobe .bars i{flex:1;min-height:2px;border-radius:2px 2px 0 0;background:linear-gradient(to top,rgba(83,242,165,.15),var(--ok));opacity:.85}
+.sysprobe .bars i:nth-child(odd){opacity:.55}
+.sysprobe .bars i:nth-child(4n){background:linear-gradient(to top,rgba(255,138,61,.15),var(--accent))}
+.sysprobe .cap{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.sysprobe .cap b{color:var(--telemetry);font-weight:500}
+
+/* 响应式：1280-1600 流体 */
+@media (min-width:1600px){
+  main{grid-template-columns:232px 1fr 320px}
+  .task{padding:32px 40px}
+}
+@media (max-width:1320px){
+  main{grid-template-columns:200px 1fr 272px}
+  .t{padding:12px 14px}
+  .t .v{font-size:18px}
+}
+
+/* ── 任务域动态区（harness；全部沿用上方 token 与 1px 规则线体系） ── */
+/* 非 Tauri 环境提示行：左缘 2px muted 刻度与输入框形态区分（ui-review P1-9） */
+.env-note{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);border:1px solid var(--rule-soft);border-left:2px solid var(--muted);border-radius:var(--r);background:var(--panel-2);padding:8px 12px;margin-bottom:18px}
+/* 资产页浏览器态提示：占满网格整行（note 落在 .asset-grid 内） */
+.asset-grid .env-note{grid-column:1/-1;margin-bottom:0}
+/* 浏览器演示态标注：kicker 行尾 mono 小字（示例非交互的诚实声明，P1-12） */
+.demo-tag{margin-left:auto;align-self:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.06em}
+/* 发起任务条：GOAL / WORKDIR / MODEL / 启动 */
+.launch{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:22px}
+.launch .fld{display:flex;flex-direction:column;min-width:0}
+.launch .fld.grow{flex:2 1 220px}
+.launch .fld.wd{flex:1 1 180px}
+.launch .fld.md{flex:0 1 160px}
+.launch .fld.hook{flex:1.5 1 240px}
+.launch label{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);margin-bottom:4px}
+.launch input,.launch select{border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:9px 12px;font-size:13px;font-family:inherit;color:var(--ink);caret-color:var(--accent);min-width:0;width:100%}
+.launch input::placeholder{color:var(--muted)}
+.launch input:focus,.launch select:focus{outline:none;border-color:var(--ink)}
+.launch .hint{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);align-self:center;flex:1 1 100%}
+/* 发起条常驻说明行：中性次级墨（红只留给失败，见 .hint）；成功反馈落 --ok（.note.ok） */
+.launch .note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);align-self:center;flex:1 1 100%}
+.launch .note.ok{color:var(--ok)}
+.launch .btn:disabled{opacity:.55;cursor:default}
+.launch .btn:disabled:hover{box-shadow:none}
+/* kicker 行内中止钮（RUNNING/HOLD 时出现） */
+.kicker-row .abort{margin-left:auto;align-self:center}
+/* kicker live 状态字的语义变体（基类 .live 为运行绿） */
+h1 .live.warn{color:var(--accent-deep)}
+h1 .live.off{color:var(--muted)}
+h1 .live.fail{color:var(--red)}
+/* 空态 */
+.task-empty{margin-top:6px;font-size:13px;color:var(--muted)}
+.aside-empty{grid-column:1/-1;font-size:13px;color:var(--muted)}
+/* 任务列状态字：FAIL 落危险红（HOLD/RUN/DONE 沿用 .hd/.run/.dn） */
+.fl{color:var(--red)}
+/* HOLD 卡内审批指令失败行 */
+.hold .errline{padding:10px 16px 0}
+
+/* ── 任务域引擎 tab 与编码 sidecar 面板（DSH/PI；沿用 token 与 1px 规则线体系） ── */
+/* tab 条：形态同顶栏域切换（墨色描边、选中反白），字号降一档；圆角顶 */
+.tabs{display:flex;width:max-content;margin-bottom:18px;border:1px solid var(--ink);border-radius:var(--r) var(--r) 0 0;overflow:hidden}
+.tabs button{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;padding:6px 18px;background:var(--ground);color:var(--ink);border:none;cursor:pointer}
+.tabs button + button{border-left:1px solid var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+.tabs button:not([aria-selected="true"]):hover{background:var(--paper)}
+/* probe 状态行 */
+.sc-probe{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.04em;color:var(--muted);border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);padding:8px 12px;margin-bottom:16px;word-break:break-all}
+.sc-probe-ok{color:var(--ok)}
+/* sidecar 发起条沿用 .launch；CWD/ARGS 输入走等宽 */
+.sc-panel .launch input{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+/* 输出流：等宽日志（.log 体系），固定高 + 内滚 */
+.sc-out{border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);height:280px;overflow-y:auto;padding:10px 14px}
+.sc-out .evt{white-space:pre-wrap;word-break:break-all}
+.sc-out .sc-err{color:var(--red)}
+.sc-out .sc-in{color:var(--accent-deep)}
+/* stdin 行 */
+.sc-stdin{display:flex;gap:10px;margin-top:14px}
+.sc-stdin input{flex:1;border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:9px 12px;font-size:12.5px;color:var(--ink);caret-color:var(--accent)}
+.sc-stdin input:focus{outline:none;border-color:var(--ink)}
+.sc-stdin input:disabled{opacity:.55}
+.sc-stdin .btn:disabled{opacity:.55;cursor:default}
+.sc-stdin .btn:disabled:hover{box-shadow:none}
+
+/* ── PI 引擎会话面板（engine.ts）：发起条/日志流沿用 .launch/.log/.sc-out 体系 ── */
+.eng-panel .launch{margin-bottom:14px}
+.eng-panel .launch input{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+/* 会话元信息行：#id + TOKENS 累计（mono 量侧） */
+.eng-meta{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.04em;color:var(--muted);margin:0 0 14px;word-break:break-all}
+/* 淡色行：thinking 前缀与「本轮完成」分隔 */
+.sc-out .sc-think{color:var(--muted)}
+/* 发送区：textarea + 一键两义主钮（发送/转向）+ 中止 */
+.eng-send{display:flex;gap:10px;margin-top:14px;align-items:flex-start}
+.eng-send textarea{flex:1;border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.5;color:var(--ink);caret-color:var(--accent);resize:vertical;min-height:42px;max-height:180px}
+.eng-send textarea:focus{outline:none;border-color:var(--ink)}
+.eng-send textarea:disabled{opacity:.55}
+.eng-send .btn:disabled{opacity:.55;cursor:default}
+.eng-send .btn:disabled:hover{box-shadow:none}
+/* HOLD 审批卡的回复输入行（事件不区分 confirm/input 型，恒有输入框、可空） */
+.hold .eng-cwrap{padding:12px 16px;border-top:1px solid var(--hold-rule)}
+.hold .eng-cwrap input{width:100%;box-sizing:border-box;border:1px solid var(--rule);background:var(--paper);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink);caret-color:var(--accent)}
+.hold .eng-cwrap input:focus{outline:none;border-color:var(--ink)}
+.eng-panel .hold{margin-top:14px}
+.eng-panel .hold + .hold{margin-top:10px}
+
+/* ── DSH headless 任务面板（dsh.ts）：发起条/日志流沿用 .launch/.log/.sc-out 体系 ── */
+.dsh-panel .launch{margin-bottom:14px}
+.dsh-panel .launch input,.dsh-panel .launch textarea{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+.dsh-panel .launch textarea{border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:9px 12px;line-height:1.5;color:var(--ink);caret-color:var(--accent);resize:vertical;min-height:64px;max-height:180px}
+.dsh-panel .launch textarea:focus{outline:none;border-color:var(--ink)}
+.dsh-panel .launch textarea:disabled{opacity:.55}
+/* TASK 字段独占发起条首行（多行输入；KEY/WORKDIR/SESSION-ID 与按钮换行排布） */
+.dsh-panel .fld.dsh-task{flex:1 1 100%}
+/* DSH 历史会话列表（R5-B#5）：mono 小行，点击回填 SESSION-ID */
+.dsh-hist{margin:0 0 14px;border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);padding:10px 12px}
+.dsh-hist[hidden]{display:none}
+.dsh-hist-h{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--muted);margin-bottom:8px}
+.dsh-hist-row{display:flex;gap:12px;align-items:baseline;padding:6px 8px;border-radius:var(--r);cursor:pointer}
+.dsh-hist-row:hover{background:rgba(111,216,255,.06)}
+.dsh-hist-row .t{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsh-hist-row .m{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);flex:none}
+.dsh-hist-row .i{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--telemetry);flex:none}
+/* 终答区：白底 paper 大块等宽正文，位置在日志流之上（一次性任务的核心产出） */
+.dsh-final{margin:0 0 14px}
+.dsh-flabel{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);margin-bottom:4px}
+.dsh-fbody{font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.65;background:var(--panel-2);color:var(--text-body);border:1px solid var(--rule-soft);border-radius:var(--r);padding:14px 16px;white-space:pre-wrap;word-break:break-word;max-height:420px;overflow-y:auto}
+
+/* ── 设置视图（rail 04；沿用 token 与 1px 规则线/直角表单/mono 标签体系） ── */
+.settings{padding:28px 32px;overflow-y:auto;border-right:1px solid var(--rule);min-width:0}
+.settings h1{margin-top:2px}
+.seth{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--muted);margin:28px 0 10px}
+/* 设置页四 tab：pane 首分区标题不吃 28px 顶距（tab 条自带 margin-bottom:18px） */
+.settings .setpane > .seth:first-child{margin-top:0}
+/* BYOK 条目表：表头 mono 小字 + 1px 底线，行内 dotted 分隔（.log 体系） */
+.bkhead,.bkrow{display:grid;grid-template-columns:150px 1fr 170px 72px;gap:12px;align-items:center}
+.bkhead{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--rule)}
+.bkrow{padding:9px 0;border-bottom:1px dotted var(--rule-soft)}
+.bkrow .n{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bkrow .u,.bkrow .m{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bkrow .btn{justify-self:end;padding:4px 12px;font-size:12px}
+.bk-empty{font-size:13px;color:var(--muted);padding:4px 0}
+/* 新增表单：2×2 直角表单（.launch 的 .fld 形态） */
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;max-width:680px}
+.formgrid .fld{display:flex;flex-direction:column;min-width:0}
+.formgrid label{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);margin-bottom:4px}
+.formgrid input{border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:9px 12px;font-size:13px;font-family:inherit;color:var(--ink);caret-color:var(--accent);min-width:0;width:100%}
+.formgrid input::placeholder{color:var(--muted)}
+.formgrid input:focus{outline:none;border-color:var(--ink)}
+.formacts{display:flex;gap:12px;align-items:center;grid-column:1 / -1}
+.formacts .btn:disabled{opacity:.55;cursor:default}
+.formacts .btn:disabled:hover{box-shadow:none}
+.settings .hint{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)}
+/* HUB 地址行：mono 值 + 修改入口 */
+.hubline{display:flex;gap:12px;align-items:center}
+.hubline .mono{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text-soft);word-break:break-all}
+/* HUB 地址行内编辑输入（登录/设置共用，P1-10）：mono、1px 墨边框（宽度由 JS 按原文本量取） */
+.hub-edit-in{border:1px solid var(--ink);border-radius:var(--r);background:var(--panel-2);color:var(--ink);caret-color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:4px 8px;min-width:0;max-width:100%}
+.hub-edit-in:focus{outline:none;border-color:var(--ink)}
+/* 浏览器态设置区块说明文字：顶部横幅已声明桌面边界，区块只留一句说明（P1-9） */
+.setd{font-size:13px;color:var(--muted)}
+/* 桌面块行标签：mono 小字定宽（开机自启/全局快捷键两行对齐） */
+.hubline .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);flex:none;width:92px}
+/* 环境卡安装命令/路径长文本槽位：占满余宽收 ellipsis，行尾安装/复制钮不被挤走（跨卡右缘对齐）；
+   :not(.st) 排除头行 READY/MISS 徽标（同带 mono 类，勿随槽位拉伸） */
+#env-list .hubline .mono:not(.st){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 环境区一键安装流式日志：mono 小字 + 限高内滚 + 1px 边线（.sc-out 飞行日志同款） */
+.env-log{font-size:11.5px;line-height:1.6;color:var(--text-soft);border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);max-height:180px;overflow-y:auto;padding:8px 12px;margin:6px 0 12px;white-space:pre-wrap;word-break:break-all}
+
+/* Update-available dot on the 04 设置 rail section: signal orange,
+   earned (needs human action to install). */
+.updot{display:inline-block;width:7px;height:7px;background:var(--accent);margin-left:8px;vertical-align:1px}
+
+/* ── 素材任务（material）：任务域「素材」tab 与结果呈现 ── */
+/* 素材 tab 内部 图/视频 切换：同 .tabs 语言，降一档字号；显式行高补足 button 不继承
+   body 1.5 的缺口（UA 给 button 落 line-height:normal），18+12 内距 = 30px 热区（P2-12） */
+.mat-kind button{padding:6px 14px;font-size:11px;line-height:18px}
+/* 素材面板空态示例 prompt：一行式 chip（P2-12），点选填入 PROMPT 输入框；
+   中性次级形态（mono 11px + 1px 规则线），hover 落墨不落橙——非信号 */
+.mat-examples{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.mat-example{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);border:1px solid var(--rule);border-radius:var(--pill);background:transparent;padding:4px 12px;cursor:pointer}
+.mat-example:hover{color:var(--ink);border-color:var(--ink)}
+/* 结果图是内容不是 chrome：无边框直显；主区预览限高 420，任务卡内缩略 160（cover 裁切） */
+.mat-img{display:block;width:100%;height:auto;max-height:420px;object-fit:cover;margin-top:8px}
+.cell .mat-img{max-height:160px}
+/* 视频结果：mono 文本外链（新窗口），hover 落信号橙深（可处置入口） */
+.mat-link{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;margin-top:8px;display:inline-block;word-break:break-all}
+.mat-link:hover{color:var(--accent-deep)}
+/* 任务列底部素材用量汇总：mono 量侧，1px 规则线分隔；#ACB8CD 而非 --muted（暗底 11px 可读性，视觉评审教训） */
+.usage-line{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule);font-size:11px;letter-spacing:.04em;color:#ACB8CD;word-break:break-all}
+
+/* ── R9-A A2：hljs token 色（量侧配色，浅深各一档，只服务代码块容器） ── */
+:root{--hl-key:#6FD8FF;--hl-str:#53F2A5;--hl-num:#FF8A3D;--hl-com:#93A0B6;--hl-fn:#9CCBEB;--hl-attr:#E0B98A}
+:root[data-theme="light"]{--hl-key:#0E6E8C;--hl-str:#2E7D43;--hl-num:#C75B12;--hl-com:#63655E;--hl-fn:#1F5F7A;--hl-attr:#8A5A22}
+.bubble .codeblk .hljs-keyword,.bubble .codeblk .hljs-selector-tag,.bubble .codeblk .hljs-built_in,.bubble .codeblk .hljs-type,.bubble .codeblk .hljs-title.class_{color:var(--hl-key)}
+.bubble .codeblk .hljs-string,.bubble .codeblk .hljs-regexp,.bubble .codeblk .hljs-addition{color:var(--hl-str)}
+.bubble .codeblk .hljs-number,.bubble .codeblk .hljs-literal,.bubble .codeblk .hljs-symbol,.bubble .codeblk .hljs-meta{color:var(--hl-num)}
+.bubble .codeblk .hljs-comment,.bubble .codeblk .hljs-quote,.bubble .codeblk .hljs-doctag{color:var(--hl-com);font-style:italic}
+.bubble .codeblk .hljs-title,.bubble .codeblk .hljs-title.function_,.bubble .codeblk .hljs-section{color:var(--hl-fn)}
+.bubble .codeblk .hljs-attr,.bubble .codeblk .hljs-attribute,.bubble .codeblk .hljs-variable,.bubble .codeblk .hljs-template-variable,.bubble .codeblk .hljs-selector-attr,.bubble .codeblk .hljs-selector-class,.bubble .codeblk .hljs-selector-id,.bubble .codeblk .hljs-name{color:var(--hl-attr)}
+.bubble .codeblk .hljs-deletion{color:var(--red)}
+
+/* ── R9-A A1：图片输入（预览条/附图钮）与消息面图片 ── */
+/* 待发缩略条：composer 胶囊上方右对齐一排，逐个可删 */
+.imgbar{display:flex;gap:8px;justify-content:flex-end;padding:0 16px 10px}
+.imgbar[hidden]{display:none}
+.imgthumb{position:relative;width:56px;height:56px;border:1px solid var(--rule-soft);border-radius:var(--r);overflow:hidden;background:var(--panel-2)}
+.imgthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.imgthumb .imgdel{position:absolute;top:2px;right:2px;font-family:var(--mono);font-size:11px;line-height:1;padding:2px 6px;color:var(--ink);background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--pill);cursor:pointer}
+.imgthumb .imgdel:hover{background:var(--red);border-color:var(--red);color:var(--ground)}
+/* 附图钮：与 model-chip 同语言的中性 mono 小钮（非信号） */
+.composer .attach{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--rule);border-radius:var(--pill);padding:6px 12px;flex:none;background:transparent;cursor:pointer;white-space:nowrap}
+.composer .attach:hover{color:var(--ink);border-color:var(--ink)}
+/* 拒收提示：输入条上方红字（.hint 危险红语义），2.5s 自愈 */
+.composer .hint{position:absolute;bottom:calc(100% + 8px);right:0;font-family:var(--mono);font-size:11px;color:var(--red)}
+.composer .hint[hidden]{display:none}
+/* 消息内图片：内容不是 chrome，等比 60% 直显；me 气泡右贴边 */
+.msg-img{display:block;max-width:60%;height:auto;margin-top:8px;border:1px solid var(--rule-soft);border-radius:var(--r);cursor:zoom-in}
+.bubble.me .msg-img{margin-left:auto}
+/* 全屏预览 overlay：点击/ESC 关闭，比新 webview 窗口轻 */
+.imgview{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(8,12,20,.86);cursor:zoom-out}
+.imgview[hidden]{display:none}
+.imgview img{max-width:92%;max-height:92%;border-radius:var(--r)}
+
+/* ── R9-B B1：@生图任务卡（消息流内素材三态卡，结果图限高缩略） ── */
+.taskcard .mat-img{max-height:220px;width:auto;max-width:100%}
+.taskcard .mop{align-self:flex-start}
+
+/* ── R9-B B2：全局快捷小窗（#quick 极简单轮，约 480×320 无装饰窗） ── */
+.quick{display:flex;flex-direction:column;height:100vh;min-height:0}
+.quick-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule);flex:none}
+.quick-head .brand{font-size:13px}
+.quick-model{margin-left:auto;font-size:10.5px;color:var(--muted)}
+.quick-ans{flex:1;overflow-y:auto;padding:14px 16px;min-height:0}
+.quick-empty{margin-top:12vh;text-align:center;color:var(--muted);font-size:12.5px}
+.q-q{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;white-space:pre-wrap;word-break:break-word}
+.q-a{font-size:13px;line-height:1.65;color:var(--text-body);word-break:break-word}
+.q-a.streaming::after{content:"";display:inline-block;width:7px;height:14px;background:var(--accent);margin-left:3px;vertical-align:-2px;animation:tick 1.2s steps(2) infinite}
+.q-a p{margin:0 0 8px}
+.q-a :last-child{margin-bottom:0}
+.q-a code{font-family:var(--mono);font-size:12px;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+.q-a pre{background:var(--code-bg);border:1px solid var(--rule-soft);border-radius:var(--r);padding:10px 12px;overflow-x:auto;margin:8px 0}
+.q-a pre code{background:transparent;padding:0}
+.quick-bar{display:flex;gap:8px;padding:12px 14px 8px;flex:none}
+.quick-bar input{flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--pill);background:var(--panel-2);padding:9px 14px;font-size:13px;font-family:inherit;color:var(--ink);caret-color:var(--accent)}
+.quick-bar input:focus{outline:none;border-color:var(--ink)}
+.quick-bar .send{padding:8px 18px;font-size:12.5px}
+.quick-foot{display:flex;gap:8px;padding:0 14px 12px;flex:none}
+.quick-foot .btn{padding:4px 14px;font-size:12px}
+
+/* ── R9-B B3：用量仪表盘（近 14 天纯 CSS 柱 + 模型汇总 bkrow 形态） ── */
+.ubars{display:flex;align-items:flex-end;gap:4px;height:72px;padding:10px 12px 8px;border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--panel-2);margin-bottom:12px}
+.ubars i{flex:1;min-height:2px;border-radius:2px 2px 0 0;background:linear-gradient(to top,rgba(255,138,61,.15),var(--accent));opacity:.85;cursor:default}
+.ubars i:hover{opacity:1}
+.usage-head,.usage-row{grid-template-columns:1fr 90px 110px;max-width:560px}
+.usage-row .u,.usage-row .m{font-variant-numeric:tabular-nums}
+
+/* ── R9-C C1 并答：composer toggle + 选模面板微调 + 并答块 N 列 grid ── */
+.composer .ptoggle{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--rule);border-radius:var(--pill);padding:6px 12px;flex:none;background:transparent;cursor:pointer;white-space:nowrap}
+.composer .ptoggle:hover{color:var(--ink);border-color:var(--ink)}
+.composer .ptoggle[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.ppanel .phint{font-size:11px;color:var(--muted);padding:6px 12px}
+.ppanel .pmark{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--accent);flex:none}
+.pblock{max-width:100%;margin:4px 0 20px;border:1px solid var(--rule-soft);border-radius:var(--r-lg);background:var(--panel-2);padding:12px}
+.pblock .phead-q{display:flex;gap:10px;align-items:baseline;margin-bottom:10px}
+.pblock .pq{flex:1;min-width:0;font-size:13px;font-weight:500;color:var(--text-body);word-break:break-word}
+.pgrid{display:grid;gap:12px}
+.pcols-1{grid-template-columns:1fr}
+.pcols-2{grid-template-columns:repeat(2,1fr)}
+.pcols-3{grid-template-columns:repeat(3,1fr)}
+.pcols-4{grid-template-columns:repeat(4,1fr)}
+.pcol{min-width:0;display:flex;flex-direction:column;gap:6px}
+.pcol .phead{display:flex;align-items:center;gap:8px}
+.pcol .phead .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--telemetry);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcol .phead .mop{flex:none;padding:1px 9px;font-size:10px}
+.pcol .bubble{margin-bottom:0;max-width:100%}
+.pcol .pbody{font-size:13px}
+.pcol .pfoot{font-size:10.5px;color:var(--muted)}
+/* ── R9-C C2 会话搜索：列表头输入 + 结果浮层（玻璃面板）+ mark 高亮 ── */
+.sess-search{position:relative;padding:0 20px 12px}
+.sess-search input{width:100%;border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:7px 12px;font-size:12.5px;font-family:inherit;color:var(--ink);caret-color:var(--accent)}
+.sess-search input:focus{outline:none;border-color:var(--ink)}
+.sresults{position:absolute;top:calc(100% - 6px);left:12px;right:12px;z-index:35;border:1px solid var(--glass-border);border-radius:var(--r-lg);background:var(--glass);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));box-shadow:0 12px 40px rgba(8,12,20,.55);padding:6px;max-height:320px;overflow-y:auto}
+.srow{padding:8px 10px;border-radius:var(--r);cursor:pointer}
+.srow:hover{background:rgba(111,216,255,.08)}
+.srow.off{color:var(--muted);cursor:default}
+.srow .st{display:block;font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .ss{display:block;font-size:12px;color:var(--muted)}
+.srow .tm{font-family:var(--mono);font-size:10px;color:var(--muted)}
+mark{background:var(--selection-wash);color:inherit;border-radius:2px;padding:0 1px}
+/* ── R9-C C3 MCP 分区：状态点 + 名称/工具面行 + 武装删除 ── */
+.mcprow{display:grid;grid-template-columns:14px 150px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px dotted var(--rule-soft)}
+.mcprow .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.mcprow .dot.off{background:var(--muted)}
+.mcprow .n{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mcprow .u{font-family:var(--mono);font-size:12px;color:var(--text-soft)}
+.mcprow .ops{display:flex;gap:6px}
+.mop.del.armed{color:var(--red);border-color:var(--red)}
+.mop:disabled{opacity:.45;cursor:default}
+/* ── R9-D D1：@资料折叠条（[资料 · N 字] mono 胶囊 + 展开态 pre，双主题走 token） ── */
+.refmsg{margin-bottom:6px}
+.refbar{display:inline-flex;align-items:baseline;gap:8px;border:1px solid var(--rule);border-radius:var(--pill);padding:2px 10px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--telemetry)}
+.refbar:hover{border-color:var(--ink)}
+.refbar .refop{color:var(--muted);font-size:10.5px}
+.refpre{margin:4px 0 10px;padding:10px 14px;border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--code-bg);color:var(--code-ink);font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow-y:auto}
+.refpre[hidden]{display:none}
+/* ── R9-D D2：@知识库折叠条段落列表 + 设置分区表单控件（select/textarea 补 formgrid 缺口） ── */
+.kbhits .kbhit{padding:6px 0;border-bottom:1px dotted var(--rule-soft)}
+.kbhits .kbhit:last-child{border-bottom:none;padding-bottom:0}
+.kbhits .kbtext{white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6}
+.kbhits .kbsrc{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+.formgrid select,.formgrid textarea{border:1px solid var(--rule);border-radius:var(--r);background:var(--panel-2);padding:9px 12px;font-size:13px;font-family:inherit;color:var(--ink);caret-color:var(--accent);min-width:0;width:100%}
+.formgrid select:focus,.formgrid textarea:focus{outline:none;border-color:var(--ink)}
+.formgrid textarea{resize:vertical;line-height:1.5}
+.formgrid textarea::placeholder{color:var(--muted)}
+
+/* ── R10-A：@知识库命中分组组头 + 提示词分区（行网格/行内编辑表单） ── */
+.kbhits .kbdoc{padding:2px 0}
+.kbhits .kbdoc-h{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--text-soft);margin:8px 0 2px}
+.kbhits .kbdoc:first-child .kbdoc-h{margin-top:0}
+.prompt-row{grid-template-columns:150px 1fr auto auto}
+.prompt-row .mop{justify-self:end}
+.prompt-edit{margin:10px 0 4px}
+.prompt-acts{margin-top:10px}
+
+/* ── R10-B B2/B3：定时任务列表（状态/名称/计划/下次/workdir/操作 六列）+ 模板 chip 行 ── */
+.schedgrid{display:grid;grid-template-columns:52px 150px 130px 130px 1fr auto;gap:12px;align-items:center}
+.sched-head{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--rule)}
+.schedrow{padding:9px 0;border-bottom:1px dotted var(--rule-soft)}
+.schedrow.off .n,.schedrow.off .pl,.schedrow.off .nx,.schedrow.off .wd{opacity:.55}
+.schedrow .n{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schedrow .pl,.schedrow .nx,.schedrow .wd{font-family:var(--mono);font-size:12px;color:var(--text-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schedrow .st{font-family:var(--mono);font-size:11px;letter-spacing:.1em}
+.schedrow .ops{display:flex;gap:6px;justify-self:end}
+.tpl-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.tpl-row:empty{display:none}
+.tpl-x{margin-left:7px;color:var(--muted)}
+.tpl-x:hover,.tpl-x.armed{color:var(--red)}
+/* ── R11-B 通用附件：窗口拖放悬停高亮 + 文本附件预览条（复用 imgthumb 格） ── */
+.composer.dragging{border:1px dashed var(--accent);border-radius:var(--pill)}
+.imgthumb.txtthumb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:auto;min-width:56px;padding:4px 10px}
+.imgthumb.txtthumb .tname{font-family:var(--mono);font-size:10px;color:var(--text-soft);max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imgthumb.txtthumb .tn{font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+
+/* ── R11 T1/T2：统一任务行（任务列五源混排）+ 看板视图 + 发起条骨架对齐 ── */
+/* 统一行头：kind 单字母徽标（mono 量侧、青色声部区分五源）+ 状态徽标同行 */
+.ucell .uhead{display:flex;align-items:center;gap:8px}
+.ucell .uhead .st{margin-left:auto}
+.kb{font-size:10px;letter-spacing:.1em;color:var(--telemetry);border:1px solid var(--rule);border-radius:4px;padding:1px 6px;flex:none}
+/* 统一详情体（dsh/pi/sched）：hubline 键值行竖排 + meta 行 + 状态徽标 mono */
+.ud-body{display:flex;flex-direction:column;gap:2px;margin-top:14px}
+.ud-body .eng-meta{margin-bottom:10px}
+.ud-body .st{font-family:var(--mono);font-size:11px;letter-spacing:.1em;flex:none}
+.ud-body .log{margin-top:12px}
+.ud-body .mat-save{margin-top:10px}
+/* tab 条 + 视图切钮同一行（切钮接在 tab 条右缘，同墨色描边语言） */
+.taskbar{display:flex;align-items:flex-end}
+.viewtoggle{font-size:12px;letter-spacing:.06em;color:var(--ink);border:1px solid var(--ink);border-left:none;border-radius:0 var(--r) var(--r) 0;padding:6px 16px;margin-bottom:18px;background:var(--ground);cursor:pointer}
+.viewtoggle:hover{background:var(--paper)}
+.viewtoggle[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+/* 看板：五列 grid（纯前端形态切换），列恒在场不塌 */
+#task-board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:22px}
+#task-board[hidden]{display:none}
+.kbcol{min-width:0;border:1px solid var(--rule-soft);border-radius:var(--r-lg);background:var(--panel-2);padding:10px;display:flex;flex-direction:column;gap:8px}
+.kbcol-h{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted)}
+.kbcol-h .n{color:var(--telemetry)}
+.kbcard{min-width:0;border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--paper);padding:10px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .15s ease,box-shadow .15s ease}
+.kbcard:hover{border-color:var(--rule);box-shadow:0 6px 18px rgba(8,12,20,.5)}
+.kbcard.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px rgba(255,138,61,.45)}
+.kbcard .ttl{font-size:12px;font-weight:500;line-height:1.35;color:var(--text-body);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kbcard .cnt{font-size:10.5px;color:var(--muted)}
+/* 空列淡占位（列标题随占位在场，五列骨架恒定） */
+.kbph{font-size:11px;color:var(--muted);opacity:.55;text-align:center;padding:10px 0}
+/* 发起条骨架对齐（T3）：裸域统一基准宽 + 换行行距统一（不改字段语义） */
+.launch{row-gap:12px}
+.launch .fld{flex:1 1 150px}

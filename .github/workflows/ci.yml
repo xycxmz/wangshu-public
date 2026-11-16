@@ -1,0 +1,93 @@
+# CI for wangshu-public. Private-first: nothing here assumes private-repo
+# features, so going public later needs zero changes.
+#
+# Jobs:
+#   server      ubuntu-latest   gofmt gate + go vet + go test (pure-Go sqlite lane,
+#                               no PG service, no env required)
+#   client-rust windows-latest  cargo test + cargo clippy -D warnings (production
+#                               platform; the 2 ignored real-machine tests in
+#                               engine/dsh.rs and engine/pi.rs stay skipped)
+#   client-web  ubuntu-latest   npm ci + npm run build (tsc && vite build)
+#
+# Minutes budget (private repo, GitHub Free = 2000 min/month; billing multipliers:
+# Linux 1x, Windows 2x). Estimates, first observed numbers will refine them:
+#   server      ~2-3 billed min/run
+#   client-web  ~2-3 billed min/run
+#   client-rust cold cache ~20-30 billed (Windows 2x on a ~10-15 min first build of
+#                the tauri tree) / warm cache ~8-12 billed
+#   -> per run: ~25-35 cold, ~12-18 warm; at 3-5 runs/day that is roughly
+#      1000-2000 billed min/month. The uncached Rust first run is by far the most
+#      expensive single event (rust-cache exists precisely to keep it rare), and
+#      the Windows 2x multiplier makes client-rust the dominant monthly cost.
+#      If the budget tightens, trim PR churn on the Rust lane before anything else.
+#
+# Triggers: push to main + pull_request (default types opened/synchronize/reopened,
+# so branch pushes under an open PR run once, not twice, and closing a PR re-runs
+# nothing). Concurrency cancels superseded runs per ref.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: gofmt gate (empty diff required)
+        run: test -z "$(gofmt -l ./cmd ./internal)"
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+  client-rust:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+      - name: cargo test
+        run: cargo test --manifest-path client/src-tauri/Cargo.toml
+      - name: cargo clippy
+        run: cargo clippy --all-targets --manifest-path client/src-tauri/Cargo.toml -- -D warnings
+
+  client-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: npm ci
+        run: npm --prefix client ci
+      - name: build (tsc && vite build)
+        run: npm --prefix client run build
+      - name: node assertions (reload + pure modules)
+        run: cd client && node scripts/reload.test.ts && node scripts/pure.test.ts
