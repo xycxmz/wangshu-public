@@ -1,5 +1,5 @@
 // Package console serves the hub admin console: a server-rendered MPA
-//. C1 会话层（HMAC cookie + 登录代理 +
+// C1 会话层（HMAC cookie + 登录代理 +
 // admin 门）；C2 骨架与视觉（go:embed 模板 + Flight Console token 内联）；
 // C3 模型池页（表格 + 新增/删除/启停 PRG）。后续 C4-C6 沿同模式扩页。
 package console
