@@ -860,7 +860,8 @@ const schedDet = (over: Partial<ScheduleRow>): ScheduleRow => ({
   workdir: "H:\proj",
   enabled: true,
   webhookUrl: "",
-  next_run: schedSec(2026, 10, 15, 21, 30),
+  // 相对时刻：CI 时区/日期与硬编码不同时，「同天 HH:MM」断言才稳定
+  next_run: schedSec(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 21, 30),
   last_run: schedSec(2026, 10, 15, 20, 0),
   last_status: "ok",
   last_task_id: "",
@@ -899,8 +900,9 @@ const ROW_BASE: ScheduleRow = {
   workdir: "H:\\proj",
   enabled: true,
   webhookUrl: "",
-  next_run: schedSec(2026, 10, 15, 21, 30),
-  last_run: schedSec(2026, 10, 15, 8, 0),
+  // 相对时刻：CI 时区/日期与硬编码不同时，「同天 HH:MM」断言才稳定
+  next_run: schedSec(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 21, 30),
+  last_run: schedSec(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 8, 0),
   last_status: "ok",
   last_task_id: null,
 };
